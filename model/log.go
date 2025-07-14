@@ -149,14 +149,28 @@ type RecordConsumeLogParams struct {
 	Other            map[string]interface{} `json:"other"`
 }
 
+// 请用这个函数完整替换掉你原来的 RecordConsumeLog 函数
+
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
 	common.LogInfo(c, fmt.Sprintf("record consume log: userId=%d, params=%s", userId, common.GetJsonString(params)))
 	if !common.LogConsumeEnabled {
 		return
 	}
 	username := c.GetString("username")
-	other["msg_info"] = GetMsgInfo(c)
+
+	// 1. 检查 params.Other 是否为 nil，如果是，则创建一个新的 map。
+	//    这是为了防止向 nil map 赋值导致的运行时 panic。
+	if params.Other == nil {
+		params.Other = make(map[string]interface{})
+	}
+
+	// 2. 将 msg_info 添加到 params.Other 这个 map 中。
+	//    这是对核心错误的修正。
+	params.Other["msg_info"] = GetMsgInfo(c)
+
+	// 3. 将更新后的 params.Other 转换为 JSON 字符串。
 	otherStr := common.MapToJsonStr(params.Other)
+
 	// 判断是否需要记录 IP
 	needRecordIp := false
 	if settingMap, err := GetUserSetting(userId, false); err == nil {
