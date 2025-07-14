@@ -155,6 +155,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		return
 	}
 	username := c.GetString("username")
+	other["msg_info"] = GetMsgInfo(c)
 	otherStr := common.MapToJsonStr(params.Other)
 	// 判断是否需要记录 IP
 	needRecordIp := false
