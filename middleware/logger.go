@@ -44,22 +44,33 @@ func RequestLogger() gin.HandlerFunc {
 	}
 }
 
+// 请用这个函数完整替换掉你原来的 SetUpLogger 函数
+
 func SetUpLogger(server *gin.Engine) {
 	server.Use(RequestLogger())
 	server.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		var requestID string
 		if param.Keys != nil {
-			requestID = param.Keys[common.RequestIdKey].(string)
+			// 安全地获取 requestID，避免 panic
+			if val, ok := param.Keys[common.RequestIdKey].(string); ok {
+				requestID = val
+			}
 		}
 
-		logStr := fmt.Sprintf("[GIN] %s | %s | %3d | %13v | %15s | %7s %s\n",
+		// 修正后的 Sprintf，移除了所有的冲突标记
+		logStr := fmt.Sprintf("[GIN] %s | %s | %3d | %13v | %15s | %-7s %s\n", // 使用 %-7s 让方法左对齐，更美观
 			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
 			requestID,
 			param.StatusCode,
-	@@ -21,5 +61,39 @@ func SetUpLogger(server *gin.Engine) {
+			param.Latency, // 响应延迟
+			param.ClientIP,
 			param.Method,
 			param.Path,
 		)
+
+		if param.ErrorMessage != "" {
+			logStr += fmt.Sprintf("| %s", param.ErrorMessage)
+		}
 
 		logStr += responseLog(param)
 
@@ -68,6 +79,7 @@ func SetUpLogger(server *gin.Engine) {
 
 	// add a middleware to log the response body when gin detail enabled
 	server.Use(func(c *gin.Context) {
+		// 确保在执行 c.Next() 之前包装 writer
 		c = common.WrapWriter(c)
 		c.Next()
 	})
